@@ -166,7 +166,7 @@ open()
 
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fclose; f < fopen; f = f + fdelta) 
+        for (f = fclose; f < fopen; f = f + fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR1,[PRIM_POS_LOCAL, <0.0, -f, fZoffset> ]);
             llSetLinkPrimitiveParamsFast(PRIM_DOOR2,[PRIM_POS_LOCAL, <0.0, f, fZoffset>]);
@@ -182,14 +182,14 @@ open()
 close()
 {
     sayDebug("close");
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         setPanelColor(REDORANGE);
         setPanelTexture(texture_edgeStripes);
 
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fopen; f >= fclose; f = f - fdelta) 
+        for (f = fopen; f >= fclose; f = f - fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR1,[PRIM_POS_LOCAL, <0.0, -f, fZoffset>]);//-f
             llSetLinkPrimitiveParamsFast(PRIM_DOOR2,[PRIM_POS_LOCAL, <0.0, f, fZoffset>]);//f
@@ -204,7 +204,7 @@ close()
 
 setColorsAndIcons()
 // Isil door has only one panel to show state.
-// Each door leaf has its own panel 
+// Each door leaf has its own panel
 // so there are always two linked color or texture calls.
 {
     sayDebug("setColorsAndIcons gPowerState:"+(string)gPowerState+" gLockdownState:"+(string)gLockdownState+" doorState:"+(string)doorState);
@@ -238,7 +238,7 @@ setColorsAndIcons()
         return;
     }
     
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         sayDebug("setColorsAndIcons doorState OPEN");
         setPanelColor(WHITE);
@@ -255,7 +255,7 @@ setColorsAndIcons()
         else // (!OPTION_NORMALLY_OPEN)
         {
             sayDebug("setColorsAndIcons CLOSED !OPTION_NORMALLY_OPEN");
-            if(OPTION_GROUP) 
+            if(OPTION_GROUP)
             {
                 setPanelColor(ORANGE);
             }
@@ -285,39 +285,21 @@ setColorsAndIcons()
                     setPanelTexture(texture_padlock);
                 }
             }
-        } 
+        }
     }
 }
 
-setPanelColor(vector Color) 
+setPanelColor(vector Color)
 {
     llSetLinkColor(PRIM_PANEL_1, Color, FACE_PANEL_1);
     llSetLinkColor(PRIM_PANEL_1, Color, FACE_PANEL_2);
 }
 
-setPanelTexture(string texture) 
+setPanelTexture(string texture)
 {
     llSetLinkTexture(PRIM_PANEL_1, texture, FACE_PANEL_1);
     llSetLinkTexture(PRIM_PANEL_1, texture, FACE_PANEL_2);
 }
-
-string enterExit(key avatar)
-{
-    vector doorPos = llGetPos();
-    rotation doorRot = llGetRot();
-    vector avatarPos = llDetectedPos(0);
-    vector end = llVecNorm(avatarPos - doorPos); // vector from dor to avatar, normalized
-    vector start = <0,1,0>; // a point out from door, normalized
-    rotation rotBetween = llRotBetween(start, end) / doorRot;
-    vector eulerBetween = llRot2Euler(rotBetween) * RAD_TO_DEG;
-    if  (eulerBetween.z < 0) {
-         return "Exit";
-    } else {
-         return "Enter";
-    }   
-}
-    
-
 
 default
 {
@@ -336,7 +318,7 @@ default
         // calculate the leaf movements
         // get the size of the door frame and calculate the sizes of the leaves
         vector frameSize = llGetScale( );
-        vector leafsize = <frameSize.x*leafScale.x, frameSize.y*leafScale.y, frameSize.z*leafScale.z>; 
+        vector leafsize = <frameSize.x*leafScale.x, frameSize.y*leafScale.y, frameSize.z*leafScale.z>;
         // special case for double door
         fwidth = frameSize.y;
         fclose = fwidth * CLOSE_FACTOR;
@@ -391,11 +373,11 @@ default
         {
             if (llGetTime() >= 2.0)
             {
-                sendJSON("admin", enterExit(llDetectedKey(0)), llDetectedKey(0));
+                sendJSON("command", "admin", llDetectedKey(0));
             }
             else if (OPTION_BUTTON)
             {
-                sendJSON("button", enterExit(llDetectedKey(0)), llDetectedKey(0));
+                sendJSON("command", "button", llDetectedKey(0));
             }
             else {
                 setPanelColor(WHITE);
@@ -406,13 +388,13 @@ default
     collision_start(integer total_number)
     {
         sayDebug("collision_start");
-        if (OPTION_BUMP) 
+        if (OPTION_BUMP)
         {
-             sendJSON("bump", enterExit(llDetectedKey(0)), llDetectedKey(0));
+             sendJSON("command", "bump", llDetectedKey(0));
         }
     }
     
-    link_message(integer sender_num, integer num, string json, key avatarKey){ 
+    link_message(integer sender_num, integer num, string json, key avatarKey){
         sayDebug("link_message "+json);
         OPTION_DEBUG = getJSONinteger(json, "OPTION_DEBUG", OPTION_DEBUG);
         OPTION_GROUP = getJSONinteger(json, "OPTION_GROUP", OPTION_GROUP);

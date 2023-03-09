@@ -89,7 +89,7 @@ integer LOCKDOWN_ON = 2;
 integer LOCKDOWN_TEMP = 3; // for normally-open door closed fair-game release
 
 // options
-integer OPTION_DEBUG = 0;
+integer OPTION_DEBUG = 1;
 vector OUTLINE_COLOR = <0,0,0>;
 vector FRAME_COLOR = <1,1,1>;
 integer OPTION_NORMALLY_OPEN;
@@ -104,6 +104,15 @@ sayDebug(string message)
     {
         llWhisper(0,"DOOR "+message);
     }
+}
+
+integer getLinkWithName(string name, integer none) {
+    integer i = llGetLinkNumber() != 0;   // Start at zero (single prim) or 1 (two or more prims)
+    integer x = llGetNumberOfPrims() + i; // [0, 1) or [1, llGetNumberOfPrims()]
+    for (; i < x; ++i)
+        if (llGetLinkName(i) == name)
+            return i; // Found it! Exit loop early with result
+    return none; // No prim with that name, return -1.
 }
 
 sendJSON(string jsonKey, string value, key avatarKey){
@@ -165,7 +174,7 @@ open()
         setPanelTexture(texture_edgeStripes);
         llPlaySound(sound_slide, 1.0);
         float f;
-        for (f = fclose; f < fopen; f = f + fdelta) 
+        for (f = fclose; f < fopen; f = f + fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR_1,[PRIM_POS_LOCAL, <f, 0.0, fZoffset>]);
         }
@@ -179,20 +188,20 @@ open()
 close()
 {
     sayDebug("close");
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         setPanelColor(REDORANGE);
         setPanelTexture(texture_edgeStripes);
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fopen; f >= fclose; f = f - fdelta) 
+        for (f = fopen; f >= fclose; f = f - fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR_1,[PRIM_POS_LOCAL, <f, 0.0, fZoffset>]);
         }
         llSetLinkPrimitiveParamsFast(PRIM_DOOR_1,[PRIM_POS_LOCAL, <fclose, 0.0, fZoffset>]);
         doorState = CLOSED;
         sendJSONinteger("doorState", doorState, "");
-    } 
+    }
     setColorsAndIcons();
 }
 
@@ -229,7 +238,7 @@ setColorsAndIcons()
         return;
     }
     
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         sayDebug("setColorsAndIcons doorState OPEN");
         setPanelColor(WHITE);
@@ -246,7 +255,7 @@ setColorsAndIcons()
         else // (!OPTION_NORMALLY_OPEN)
         {
             sayDebug("setColorsAndIcons CLOSED !OPTION_NORMALLY_OPEN");
-            if(OPTION_GROUP) 
+            if(OPTION_GROUP)
             {
                 setPanelColor(ORANGE);
             }
@@ -276,16 +285,16 @@ setColorsAndIcons()
                     setPanelTexture(texture_padlock);
                 }
             }
-        } 
+        }
     }
 }
 
-setPanelColor(vector Color) 
+setPanelColor(vector Color)
 {
     llSetLinkColor(PRIM_PANEL_1, Color, FACE_PANEL_1);
 }
 
-setPanelTexture(string Texture) 
+setPanelTexture(string Texture)
 {
     llSetLinkTexture(PRIM_PANEL_1, Texture, FACE_PANEL_1);
 }
@@ -297,6 +306,23 @@ default
         sayDebug("state_entry");
         gPowerState = POWER_OFF;
         
+        //get the door's ID so it can find its panel
+        string myID = "";
+        string optionstring = llGetObjectDesc();
+        integer id_index = llSubStringIndex(optionstring,"id");
+        string theRest = llGetSubString(optionstring,id_index,-1);
+        integer lbracket = llSubStringIndex(theRest,"[");
+        integer rbracket = llSubStringIndex(theRest,"]");
+        myID = llGetSubString(theRest,lbracket+1,rbracket-1);
+        string doorID = myID + "panel";
+
+        if (myID != "")
+        {
+            PRIM_DOOR_1 = getLinkWithName(doorID, 2);
+            PRIM_PANEL_1 = getLinkWithName(doorID, 2);
+        }
+        sayDebug("myID:["+myID+"]   doorID:["+doorID+"]   PRIM_DOOR_1:["+(string)PRIM_DOOR_1+"]   PRIM_PANEL_1:["+(string)PRIM_PANEL_1+"]");
+        
         // panel texture scale and offset
         setPanelColor(WHITE);
         llSetLinkPrimitiveParams(PRIM_PANEL_1, [PRIM_TEXTURE, FACE_PANEL_1, texture_padlock, PANEL_TEXTURE_SCALE, PANEL_TEXTURE_OFFSET, PANEL_TEXTURE_ROTATION]);
@@ -305,7 +331,7 @@ default
         // calculate the leaf movements
         // get the size of the door frame and calculate the sizes of the leaves
         vector frameSize = llGetScale( );
-        vector leafsize = <frameSize.x * LEAF_SCALE.x, frameSize.y * LEAF_SCALE.y, frameSize.z * LEAF_SCALE.z>; 
+        vector leafsize = <frameSize.x * LEAF_SCALE.x, frameSize.y * LEAF_SCALE.y, frameSize.z * LEAF_SCALE.z>;
         fwidth = frameSize.x;
         fclose = fwidth * CLOSE_FACTOR;
         fopen = fwidth * OPEN_FACTOR;
@@ -365,7 +391,7 @@ default
     collision_start(integer total_number)
     {
         sayDebug("collision_start");
-        if (OPTION_BUMP) 
+        if (OPTION_BUMP)
         {
              sendJSON("command", "bump", llDetectedKey(0));
         }

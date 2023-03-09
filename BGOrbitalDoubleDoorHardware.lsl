@@ -6,13 +6,13 @@
 // 3.0 Separates Hardware and Logic Layers
 
 // Installation Notes
-// There MUST be a new root prim added: 
+// There MUST be a new root prim added:
 // With floor link rot <0,0,0>
 // this prim must be
 // Size <5.5, 3.5, .5>
 // Rot <0, 90, 90>
 // hollow 90
-// All scripts go into this prim. 
+// All scripts go into this prim.
 
 // ========================================
 // custom
@@ -173,7 +173,7 @@ open()
 
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fclose; f < fopen; f = f + fdelta) 
+        for (f = fclose; f < fopen; f = f + fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR1,[PRIM_POS_LOCAL, <-f, 0.0, 0.0> ]);
             llSetLinkPrimitiveParamsFast(PRIM_DOOR2,[PRIM_POS_LOCAL, <f, 0.0, 0.0>]);
@@ -189,14 +189,14 @@ open()
 close()
 {
     sayDebug("close");
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         setPanelColor(REDORANGE);
         setPanelTexture(texture_edgeStripes);
 
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fopen; f >= fclose; f = f - fdelta) 
+        for (f = fopen; f >= fclose; f = f - fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR1,[PRIM_POS_LOCAL, <-f, 0.0, 0.0>]);//-f
             llSetLinkPrimitiveParamsFast(PRIM_DOOR2,[PRIM_POS_LOCAL, <f, 0.0, 0.0>]);//f
@@ -211,7 +211,7 @@ close()
 
 setColorsAndIcons()
 // Orbital door has only one panel to show state.
-// Each door leaf has its own panel 
+// Each door leaf has its own panel
 // so there are always two linked color or texture calls.
 {
     sayDebug("setColorsAndIcons gPowerState:"+(string)gPowerState+" gLockdownState:"+(string)gLockdownState+" doorState:"+(string)doorState);
@@ -245,7 +245,7 @@ setColorsAndIcons()
         return;
     }
     
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         sayDebug("setColorsAndIcons doorState OPEN");
         setPanelColor(WHITE);
@@ -262,7 +262,7 @@ setColorsAndIcons()
         else // (!OPTION_NORMALLY_OPEN)
         {
             sayDebug("setColorsAndIcons CLOSED !OPTION_NORMALLY_OPEN");
-            if(OPTION_GROUP) 
+            if(OPTION_GROUP)
             {
                 setPanelColor(ORANGE);
             }
@@ -292,17 +292,17 @@ setColorsAndIcons()
                     setPanelTexture(texture_padlock);
                 }
             }
-        } 
+        }
     }
 }
 
-setPanelColor(vector Color) 
+setPanelColor(vector Color)
 {
     llSetLinkColor(PRIM_PANEL_1, Color, FACE_PANEL_1);
     llSetLinkColor(PRIM_PANEL_1, Color, FACE_PANEL_2);
 }
 
-setPanelTexture(string texture) 
+setPanelTexture(string texture)
 {
     llSetLinkTexture(PRIM_PANEL_1, texture, FACE_PANEL_1);
     llSetLinkTexture(PRIM_PANEL_1, texture, FACE_PANEL_2);
@@ -325,7 +325,7 @@ default
         // calculate the leaf movements
         // get the size of the door frame and calculate the sizes of the leaves
         vector frameSize = llGetScale( );
-        vector leafsize = <frameSize.z*leafScale.z, frameSize.x*leafScale.x, frameSize.y*leafScale.y>; 
+        vector leafsize = <frameSize.z*leafScale.z, frameSize.x*leafScale.x, frameSize.y*leafScale.y>;
         // special case for double door
         fwidth = frameSize.x;
         fclose = fwidth * CLOSE_FACTOR;
@@ -394,13 +394,13 @@ default
     collision_start(integer total_number)
     {
         sayDebug("collision_start");
-        if (OPTION_BUMP) 
+        if (OPTION_BUMP)
         {
              sendJSON("command", "bump", llDetectedKey(0));
         }
     }
     
-    link_message(integer sender_num, integer num, string json, key avatarKey){ 
+    link_message(integer sender_num, integer num, string json, key avatarKey){
         sayDebug("link_message "+json);
         OPTION_DEBUG = getJSONinteger(json, "OPTION_DEBUG", OPTION_DEBUG);
         OPTION_GROUP = getJSONinteger(json, "OPTION_GROUP", OPTION_GROUP);

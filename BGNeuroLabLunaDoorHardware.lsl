@@ -2,7 +2,7 @@
 // Replacement script for Luna Doors: single or double, metal or glass at Black Gazza
 // Timberwoof Lupindo
 // January 1, 2014 - May 29, 2018
-// 2.2 adds versatile timer; version number matches Greeble 
+// 2.2 adds versatile timer; version number matches Greeble
 // 3.0 separates logic and presentation
 
 // ========================================
@@ -52,14 +52,14 @@ keypadBeep(vector hv)
         sayDebug("keypadBeep failed power check");
         return;
     }
-    list sounds = [sound_beep0, 
-        sound_beep1, sound_beep2, sound_beep3, 
-        sound_beep4, sound_beep5, sound_beep6, 
-        sound_beep7, sound_beep8, sound_beep9, 
+    list sounds = [sound_beep0,
+        sound_beep1, sound_beep2, sound_beep3,
+        sound_beep4, sound_beep5, sound_beep6,
+        sound_beep7, sound_beep8, sound_beep9,
         sound_beep0, sound_beep0, sound_beep0 ];
         
     integer ones = llFloor(hv.x * 3) + 1;
-    integer threes = 9 - llFloor(hv.y * 4) * 3; 
+    integer threes = 9 - llFloor(hv.y * 4) * 3;
     llPlaySound(llList2String(sounds,ones + threes),1);
 }
 
@@ -200,14 +200,14 @@ reportStatus()
 open()
 {
     sayDebug("open()");
-    if ( (CLOSED == doorState)  &  (gPowerState == POWER_ON)) 
+    if ( (CLOSED == doorState)  &  (gPowerState == POWER_ON))
     {
         setPanelColor(GREEN);
         setPanelTexture(texture_edgeStripes);
         particles(1); // luna door has steam puffs
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fclose; f < fopen; f = f + fdelta) 
+        for (f = fclose; f < fopen; f = f + fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR_1,[PRIM_POS_LOCAL, <-f, 0.0, 0.0> ]);//
             llSetLinkPrimitiveParamsFast(PRIM_DOOR_2,[PRIM_POS_LOCAL, <f, 0.0, 0.0>]);//f
@@ -223,14 +223,14 @@ open()
 close()
 {
     sayDebug("close");
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         setPanelColor(REDORANGE);
         setPanelTexture(texture_edgeStripes);
         particles(1); // luna door has steam puffs
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fopen; f >= fclose; f = f - fdelta) 
+        for (f = fopen; f >= fclose; f = f - fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR_1,[PRIM_POS_LOCAL, <-f, 0.0, 0.0>]);//-f
             llSetLinkPrimitiveParamsFast(PRIM_DOOR_2,[PRIM_POS_LOCAL, <f, 0.0, 0.0>]);//f
@@ -248,7 +248,7 @@ particles(integer on)
 {
     list puff = [
         PSYS_PART_FLAGS, 275,
-        PSYS_SRC_PATTERN, 8, 
+        PSYS_SRC_PATTERN, 8,
         PSYS_PART_START_ALPHA, 1.0,
         PSYS_PART_END_ALPHA, 0.0,
         PSYS_PART_START_COLOR, DARK_GRAY,
@@ -256,7 +256,7 @@ particles(integer on)
         PSYS_PART_START_SCALE, <0.05, 0.05, 0.0>,
         PSYS_PART_END_SCALE, <0.2, 0.2, 0.0>,
         PSYS_PART_MAX_AGE, 0.5,
-        PSYS_SRC_MAX_AGE, 2.0, 
+        PSYS_SRC_MAX_AGE, 2.0,
         PSYS_SRC_ACCEL, <0.0, 0.0, 0.0>,
         PSYS_SRC_ANGLE_BEGIN, 0.0,
         PSYS_SRC_ANGLE_END, 0.0,
@@ -354,7 +354,7 @@ setColorsAndIcons()
         llSetColor(CYAN, FACE_OUTLINE);
     }
     
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         sayDebug("setColorsAndIcons doorState OPEN");
         setPanelColor(WHITE);
@@ -404,12 +404,12 @@ setColorsAndIcons()
     }
 }
 
-setPanelColor(vector Color) 
+setPanelColor(vector Color)
 {
     llSetColor(Color, FACE_PUSH_TO_OPEN);
 }
 
-setPanelTexture(string Texture) 
+setPanelTexture(string Texture)
 {
     llSetTexture(Texture, FACE_PUSH_TO_OPEN);
 }
@@ -433,10 +433,10 @@ default
         vector leafsize;
         
         // calculate the leaf movements - Luna
-        if (llGetNumberOfPrims() == 5) 
+        if (llGetNumberOfPrims() == 5)
         {
             // two sliding leaves
-            leafsize = <myscale.y*LEAF_SCALE.y, myscale.x*LEAF_SCALE.x/2.0, myscale.x*LEAF_SCALE.z>; 
+            leafsize = <myscale.y*LEAF_SCALE.y, myscale.x*LEAF_SCALE.x/2.0, myscale.x*LEAF_SCALE.z>;
             // special case for double door
             fwidth = leafsize.y;
             fclose = fwidth / 2.0;
@@ -446,7 +446,7 @@ default
         else
         {
             // one sliding leaf
-            leafsize = <myscale.y*LEAF_SCALE.y, myscale.x*LEAF_SCALE.x, myscale.x*LEAF_SCALE.z>; 
+            leafsize = <myscale.y*LEAF_SCALE.y, myscale.x*LEAF_SCALE.x, myscale.x*LEAF_SCALE.z>;
             // x and y are reversed in the leaves
             fwidth = leafsize.y;
             fclose = 0;
@@ -461,9 +461,9 @@ default
         llSetLinkPrimitiveParamsFast(PRIM_DOOR_2,[PRIM_POS_LOCAL, <fopen, 0.0, 0.0>]);//f
 
         // calculate and set the nozzle locations - luna only
-        llSetLinkPrimitiveParamsFast(PRIM_JET_1,[PRIM_POS_LOCAL, 
+        llSetLinkPrimitiveParamsFast(PRIM_JET_1,[PRIM_POS_LOCAL,
         <myscale.x*nozzleXoffset, myscale.y*nozzle2Yoffset, myscale.z*nozzleZoffset>]);
-        llSetLinkPrimitiveParamsFast(PRIM_JET_2,[PRIM_POS_LOCAL, 
+        llSetLinkPrimitiveParamsFast(PRIM_JET_2,[PRIM_POS_LOCAL,
         <myscale.x*nozzleXoffset, myscale.y*nozzle3Yoffset, myscale.z*nozzleZoffset>]);
 
         gPowerState = POWER_ON;
@@ -518,13 +518,13 @@ default
     collision_start(integer total_number)
     {
         sayDebug("collision_start");
-        if (OPTION_BUMP) 
+        if (OPTION_BUMP)
         {
              sendJSON("command", "bump", llDetectedKey(0));
         }
     }
     
-    link_message(integer sender_num, integer num, string json, key avatarKey){ 
+    link_message(integer sender_num, integer num, string json, key avatarKey){
         sayDebug("link_message "+json);
         OPTION_DEBUG = getJSONinteger(json, "OPTION_DEBUG", OPTION_DEBUG);
         OPTION_GROUP = getJSONinteger(json, "OPTION_GROUP", OPTION_GROUP);

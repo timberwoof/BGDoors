@@ -32,7 +32,7 @@ integer FACE_FRAME7 = 7; // big window
 // Physical Sizes
 vector LEAF_SCALE = <0.22, 0.4, 0.8>;
 float CLOSE_FACTOR = -0.35;
-float OPEN_FACTOR = -0.14; // plus or minus
+float OPEN_FACTOR = -0.142; // plus or minus
 float ZOFFSET_FACTOR = 0.0;
 
 vector PANEL_TEXTURE_SCALE = <1.0, 1.0, 0>;
@@ -169,7 +169,7 @@ open()
         setPanelTexture(texture_edgeStripes);
         llPlaySound(sound_slide, 1.0);
         float f;
-        for (f = fclose; f < fopen; f = f + fdelta) 
+        for (f = fclose; f < fopen; f = f + fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR,[PRIM_POS_LOCAL, <f, 0.0, 0.0>]);//f
         }
@@ -183,20 +183,20 @@ open()
 close()
 {
     sayDebug("close");
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         setPanelColor(REDORANGE);
         setPanelTexture(texture_edgeStripes);
         llPlaySound(sound_slide,1.0);
         float f;
-        for (f = fopen; f >= fclose; f = f - fdelta) 
+        for (f = fopen; f >= fclose; f = f - fdelta)
         {
             llSetLinkPrimitiveParamsFast(PRIM_DOOR,[PRIM_POS_LOCAL, <f, 0.0, 0.0>]);//f
         }
         llSetLinkPrimitiveParamsFast(PRIM_DOOR,[PRIM_POS_LOCAL, <fclose, 0.0, 0.0>]);//f
         doorState = CLOSED;
         sendJSONinteger("doorState", doorState, "");
-    } 
+    }
     setColorsAndIcons();
 }
 
@@ -233,7 +233,7 @@ setColorsAndIcons()
         return;
     }
     
-    if (OPEN == doorState) 
+    if (OPEN == doorState)
     {
         sayDebug("setColorsAndIcons doorState OPEN");
         setPanelColor(WHITE);
@@ -250,7 +250,7 @@ setColorsAndIcons()
         else // (!OPTION_NORMALLY_OPEN)
         {
             sayDebug("setColorsAndIcons CLOSED !OPTION_NORMALLY_OPEN");
-            if(OPTION_GROUP) 
+            if(OPTION_GROUP)
             {
                 setPanelColor(ORANGE);
             }
@@ -280,16 +280,16 @@ setColorsAndIcons()
                     setPanelTexture(texture_padlock);
                 }
             }
-        } 
+        }
     }
 }
 
-setPanelColor(vector Color) 
+setPanelColor(vector Color)
 {
     llSetLinkColor(PRIM_DOOR, Color, FACE_DOOR_PANEL);
 }
 
-setPanelTexture(string Texture) 
+setPanelTexture(string Texture)
 {
     llSetLinkTexture(PRIM_DOOR, Texture, FACE_DOOR_PANEL);
 }
@@ -319,7 +319,7 @@ default
         // calculate the leaf movements
         // get the size of the door frame and calculate the sizes of the leaves
         vector frameSize = llGetScale( );
-        vector leafsize = <frameSize.x * LEAF_SCALE.x, frameSize.y * LEAF_SCALE.y, frameSize.z * LEAF_SCALE.z>; 
+        vector leafsize = <frameSize.x * LEAF_SCALE.x, frameSize.y * LEAF_SCALE.y, frameSize.z * LEAF_SCALE.z>;
         fwidth = frameSize.x;
         fclose = fwidth * CLOSE_FACTOR;
         fopen = fwidth * OPEN_FACTOR;
@@ -373,7 +373,7 @@ default
         {
             sendJSON("command", "admin", llDetectedKey(0));
         }
-        else 
+        else
         {
             if (OPTION_BUTTON && isDoorButton(link, face))
             {
@@ -390,7 +390,7 @@ default
     collision_start(integer total_number)
     {
         sayDebug("collision_start");
-        if (OPTION_BUMP) 
+        if (OPTION_BUMP)
         {
              sendJSON("command", "bump", llDetectedKey(0));
         }
