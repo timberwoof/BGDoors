@@ -174,9 +174,9 @@ open()
         llSetLinkPrimitiveParamsFast(PRIM_DOOR1,[PRIM_POS_LOCAL, <0.0, -fopen, fZoffset> ]);
         llSetLinkPrimitiveParamsFast(PRIM_DOOR2,[PRIM_POS_LOCAL, <0.0, fopen, fZoffset>]);
         doorState = OPEN;
-        sendJSONinteger("doorState", doorState, "");
     }
     setColorsAndIcons();
+    sendJSONinteger("doorState", doorState, "");
 }
 
 close()
@@ -197,9 +197,9 @@ close()
         llSetLinkPrimitiveParamsFast(PRIM_DOOR1,[PRIM_POS_LOCAL, <0.0, -fclose, fZoffset> ]);//
         llSetLinkPrimitiveParamsFast(PRIM_DOOR2,[PRIM_POS_LOCAL, <0.0, fclose, fZoffset>]);//f
         doorState = CLOSED;
-        sendJSONinteger("doorState", doorState, "");
     }
     setColorsAndIcons();
+    sendJSONinteger("doorState", doorState, "");
 }
 
 setColorsAndIcons()
