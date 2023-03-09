@@ -14,9 +14,7 @@
 // owner[ownername]: gives people listed the ability to open the door despite all settings
 // zap: zaps nonmember who tries to operate door
 // normally-open: door will open on reset, after power is restored, and lockdown is lifted
-// normally-closed: door will close on reset, after power is restored
 // otherwise door will close on reset and after power is restored.
-// Note: Behavior when both normall-open and normally-closed are set is not defined
 // frame:<r,g,b>: sets frame to this color
 // button: makes the "open" button work
 // bump: makes the door open when someone bumps into it.
@@ -28,7 +26,6 @@ string version = "3.1 2020-08-10";
 float gSensorRadius;
 
 integer ZAP_CHANNEL = -106969;
-integer DOOR_CHANNEL = -7654234;
 
 integer menuChannel;
 integer menuListen;
@@ -78,14 +75,19 @@ integer OPTION_ADMIN = 0;
 integer OPTION_OWNERS = 0;
 integer OPTION_ZAP = 0;
 integer OPTION_NORMALLY_OPEN = 0;
-integer OPTION_NORMALLY_CLOSED = 0;
 integer OPTION_LABEL = 0;
 integer OPTION_BUTTON = 0;
 integer OPTION_BUMP = 0;
+integer OPTION_DIRECTION = 1; // if 1, sets security based on entry or exit
 string OPTION_COLOR_FRAME = JSON_INVALID;
 string OPTION_COLOR_PANELS = JSON_INVALID;
 string OPTION_COLOR_CLEATS = JSON_INVALID;
 string owners = "";
+
+integer responderChannel;
+integer responderListen;
+string direction;
+string avatarJSON;
 
 // timer
 integer TIMER_INTERVAL = 2;
@@ -124,9 +126,9 @@ getOptions()
     if (llSubStringIndex(optionstring,"admin") > -1) OPTION_ADMIN = 1;
     if (llSubStringIndex(optionstring,"zap") > -1) OPTION_ZAP = 1;
     if (llSubStringIndex(optionstring,"normally-open") > -1) OPTION_NORMALLY_OPEN = 1;
-    if (llSubStringIndex(optionstring,"normally-closed") > -1) OPTION_NORMALLY_CLOSED = 1;
     if (llSubStringIndex(optionstring,"button") > -1) OPTION_BUTTON = 1;
     if (llSubStringIndex(optionstring,"bump") > -1) OPTION_BUMP = 1;
+    if (llSubStringIndex(optionstring,"direction") > -1) OPTION_DIRECTION = 1;
     if (llSubStringIndex(optionstring,"delay") > -1) OPTION_DELAY = 1;
     
     OPTION_COLOR_FRAME = getVectorOption(optionstring, "frame");
@@ -152,7 +154,6 @@ sendOptions()
     sendJSONinteger("OPTION_DEBUG",OPTION_DEBUG, "");
     sendJSONinteger("OPTION_GROUP",OPTION_GROUP, "");
     sendJSONinteger("OPTION_NORMALLY_OPEN",OPTION_NORMALLY_OPEN, "");
-    sendJSONinteger("OPTION_NORMALLY_CLOSED",OPTION_NORMALLY_CLOSED, "");
     sendJSONinteger("OPTION_BUTTON", OPTION_BUTTON, "");
     sendJSONinteger("OPTION_BUMP",OPTION_BUMP, "");
     if (OPTION_COLOR_FRAME != JSON_INVALID) sendJSON("OPTION_COLOR_FRAME", (string)OPTION_COLOR_FRAME, "");
@@ -171,9 +172,9 @@ saveOptions()
     options = options + getOption("admin", OPTION_ADMIN);
     options = options + getOption("zap", OPTION_ZAP);
     options = options + getOption("normally-open", OPTION_NORMALLY_OPEN);
-    options = options + getOption("normally-closed", OPTION_NORMALLY_CLOSED);
     options = options + getOption("button", OPTION_BUTTON);
     options = options + getOption("bump", OPTION_BUMP);
+    options = options + getOption("direction", OPTION_DIRECTION);
     options = options + getOption("debug", OPTION_DEBUG);
     options = options + getOption("power", OPTION_POWER);
 
@@ -205,7 +206,6 @@ reportStatus()
     llWhisper(0,"admin: "+(string)OPTION_ADMIN);
     llWhisper(0,"zap: "+(string)OPTION_ZAP);
     llWhisper(0,"normally-open: "+(string)OPTION_NORMALLY_OPEN);
-    llWhisper(0,"normally-closed: "+(string)OPTION_NORMALLY_CLOSED);
     llWhisper(0,"button: "+(string)OPTION_BUTTON);
     llWhisper(0,"bump: "+(string)OPTION_BUMP);
     llWhisper(0,"debug: "+(string)OPTION_DEBUG);
@@ -264,7 +264,6 @@ maintenanceMenu(key whoClicked)
 {
     list menu = [];
     menu = menu + [menuCheckbox("Open", OPTION_NORMALLY_OPEN)];
-    menu = menu + [menuCheckbox("Close", OPTION_NORMALLY_CLOSED)];
     menu = menu + [menuCheckbox("Button", OPTION_BUTTON)];
     menu = menu + [menuCheckbox("Bump", OPTION_BUMP)];
     
@@ -273,7 +272,7 @@ maintenanceMenu(key whoClicked)
     menu = menu + [menuCheckbox("Delay", OPTION_DELAY)];
 
     menu = menu + [menuCheckbox("Group", OPTION_GROUP)];
-    //menu = menu + [menuCheckbox("Zap", OPTION_ZAP)];
+    menu = menu + [menuCheckbox("Zap", OPTION_ZAP)];
     menu = menu + [menuCheckbox("Admin", OPTION_ADMIN)];
 
     menu = menu + [menuCheckbox("Debug", OPTION_DEBUG)];
@@ -328,25 +327,74 @@ integer checkAdmin(key whoclicked)
     return authorized;
 }
 
-integer checkAuthorization(string calledby, key whoclicked)
+integer uuidToInteger(key uuid)
+// primitive hash of uuid parts
+{
+    // UUID looks like 284ba63f-378b-4be6-84d9-10db6ae48b8d
+    string hexdigits = "abcdef";
+    list uuidparts = llParseString2List(uuid,["-"],[]);
+    // last one is too big; split it into 2 6-digit numbers
+    string last = llList2String(uuidparts,4);
+    string last1 = llGetSubString(last,0,5);
+    string last2 = llGetSubString(last,6,12);
+    list lasts = [last1, last2];
+    uuidparts = llListReplaceList(uuidparts, lasts, 4, 4);
+    
+    integer sum = 0;
+    integer i = 0;
+    // take each uuid part
+    for (i=0; i < llGetListLength(uuidparts); i++) {
+        string uuidPart = llList2String(uuidparts,i);
+        integer j;
+        // look at each digit
+        for (j=0; j < llStringLength(uuidPart); j++) {
+            string c = llGetSubString(uuidPart, j, j);
+            string k = (string)llSubStringIndex(hexdigits, c);
+            // if it's in abcdef
+            if ((integer)k > -1) {
+                // substitute in the digit 123456
+                uuidPart = llDeleteSubString(uuidPart, j, j);
+                uuidPart = llInsertString(uuidPart, j, k);
+            }
+        }
+        sum = sum - (integer)uuidPart;
+    }
+    return sum;
+}
+
+pokeResponder(key whoclicked) {
+    // send a message on the responderChannel for the avatar
+    // the message looks like
+    // {"request":["Mood","Class","LockLevel"]}
+    responderChannel = uuidToInteger(whoclicked);
+    responderListen = llListen(responderChannel, "", "", "");
+    
+    // first make a json list
+    string jsonArray = (llList2Json(JSON_ARRAY, ["Role", "Mood","Class","LockLevel"]));
+    string jsonRequest = llList2Json(JSON_OBJECT, ["request", jsonArray]);
+    sayDebug("pokeResponder jsonRequest:"+(string)responderChannel + " " + jsonRequest);
+    llSay(responderChannel, jsonRequest);
+}
+
+integer checkAuthorization1(string calledby, key whoclicked)
 // all the decisions about whether to do anything
 // in response to bump or press button
 {
-    sayDebug("checkAuthorization called by "+calledby);
-    // assume authorization
+    sayDebug("checkAuthorization1 called by "+calledby);
+    // assume no authorization
     integer authorized = 1;
     
     // group prohibits
     if (OPTION_GROUP & (!llSameGroup(whoclicked)))
     {
-        sayDebug("checkAuthorization failed group check");
+        sayDebug("checkAuthorization1 failed group check");
         authorized = 0;
     }
 
     // power off prohibits, but don't zap
     if ((OPTION_POWER) & (gPowerState == POWER_OFF))
     {
-        sayDebug("checkAuthorization failed power check");
+        sayDebug("checkAuthorization1 failed power check");
         authorized = 0;
         return authorized;
     }
@@ -354,41 +402,98 @@ integer checkAuthorization(string calledby, key whoclicked)
     // lockdown checks group
     if ((gLockdownState == LOCKDOWN_ON | gLockdownState == LOCKDOWN_TEMP) && (!llSameGroup(whoclicked)))
     {
-        sayDebug("checkAuthorization gLockdownState:"+(string)gLockdownState+" failed lockdown group check");
+        sayDebug("checkAuthorization1 gLockdownState:"+(string)gLockdownState+" failed lockdown group check");
         authorized = 0;
     }
 
-    // ( match overrides
+    // owner match overrides
     sayDebug("owners:"+owners+" whoclicked:"+llKey2Name(whoclicked));
     if (OPTION_OWNERS & (llSubStringIndex(owners, llKey2Name(whoclicked))) >= 0)
     {
-        sayDebug ("checkAuthorization passed OWNERS check");
+        sayDebug ("checkAuthorization1 passed OWNERS check");
         authorized = 1;
     }
-    else
-    {
-        sayDebug("checkAuthorization failed OWNERS check");
-    }
     
+    if (OPTION_DIRECTION)
+    {
+        vector doorPos = llGetPos();
+        rotation doorRot = llGetRot();
+        vector avatarPos = llList2Vector(llGetObjectDetails(whoclicked, [OBJECT_POS]), 0);
+        vector end = llVecNorm(avatarPos - doorPos); // vector from dor to avatar, normalized
+        vector start = <0,1,0>; // a point out from door, normalized
+        rotation rotBetween = llRotBetween(start, end) / doorRot;
+        vector eulerBetween = llRot2Euler(rotBetween) * RAD_TO_DEG;
+        if  (eulerBetween.z < 0) {
+             direction = "Exit";
+        } else {
+             direction = "Enter";
+        }
+        sayDebug("checkAuthorization1 "+direction);
+    }
+
     if (authorized)
     {
-        sayDebug("checkAuthorization passed checks");
+        sayDebug("checkAuthorization1 passed checks");
     }
     else
     {
         if (OPTION_ZAP)
         {
-            sayDebug("checkAuthorization failed checks; zapping");
+            sayDebug("checkAuthorization1 failed checks; zapping");
             llSay(ZAP_CHANNEL,(string)whoclicked);
         }
         else
         {
-            sayDebug("checkAuthorization failed checks");
+            sayDebug("checkAuthorization1 failed checks");
         }
     }
     sendJSONinteger("authorized", authorized, "");
 
-    sayDebug("checkAuthorization returns "+(string)authorized);
+    sayDebug("checkAuthorization1 returns "+(string)authorized);
+    return authorized;
+}
+
+integer checkAuthorization2 (string avatarJSON) {
+    sayDebug("checkAuthorization2 "+avatarJSON);
+    // [{"Role":"Inmate"},{"Mood":"OOC"},{"Class":"blue"},{"LockLevel":"Off"}]
+    integer authorized = 0;
+    if (avatarJSON != JSON_INVALID) {
+        string role = "unknown";
+        string mood = "unknown";
+        string class = "unknown";
+        string locklevel = "unknown";
+
+        list keyValuePairs = llJson2List(avatarJSON);
+        integer i;
+        list responses;
+        for (i = 0; i < llGetListLength(keyValuePairs); i++) {
+            string keyValue = llList2String(keyValuePairs, i);
+            role = getJSONstring(keyValue, "Role", role);
+            mood = getJSONstring(keyValue, "Mood", mood);
+            class = getJSONstring(keyValue, "Class", class);
+            locklevel = getJSONstring(keyValue, "LockLevel", locklevel);
+        }
+        sayDebug("checkAuthorization2 role:"+role+" Mood:"+mood+" Class:"+class+" Lock:"+locklevel);
+        if (role == "Inmate") {
+            if (direction == "Exit") {
+                if (mood == "OOC") {
+                    authorized = 1;
+                } else {
+                    llWhisper(0, "Inmate! Exit is forbidden. ((Switch your Mood to OOC.))");
+                }
+            } else {
+                if (mood != "OOC") {
+                    authorized = 1;
+                } else {
+                    llWhisper(0, "Inmate! Entry is forbidden. ((Switch your Mood to IC.))");
+                }
+            }
+        }
+        
+    } else {
+        sayDebug("checkAuthorization2 got bad json");
+    }
+    sayDebug("checkAuthorization2 returns "+(string)authorized);
     return authorized;
 }
 
@@ -400,11 +505,10 @@ open()
 {
     sayDebug("open()");
     sendJSON("command", "open", "");
-    llWhisper(DOOR_CHANNEL,"open");
 
     // if normally closed or we're in lockdown,
     // start a sensor that will close the door when it's clear.
-    if ((!OPTION_NORMALLY_OPEN | gLockdownState == LOCKDOWN_ON | gLockdownState == LOCKDOWN_IMMINENT) & OPTION_NORMALLY_CLOSED)
+    if (!OPTION_NORMALLY_OPEN | gLockdownState == LOCKDOWN_ON | gLockdownState == LOCKDOWN_IMMINENT)
     {
         sayDebug("open setting sensor radius "+(string)gSensorRadius);
         llSensorRepeat("", "", AGENT, gSensorRadius, PI, 1.0);
@@ -421,14 +525,13 @@ open()
     }
 }
 
-// sends open command to hardware
+// sends close command to hardware
 // handles temporary lockdown
 // hardware calls setColorsAndIcons
 close()
 {
     sayDebug("close");
     sendJSON("command", "close", "");
-    llWhisper(DOOR_CHANNEL,"close");
     
     // if normally open and we're in lockdown,
     // start the fair-game automatic release timer
@@ -506,11 +609,7 @@ default
             doorState = CLOSED;
             open();
         }
-        if (OPTION_NORMALLY_CLOSED) {
-            doorState = OPEN;
-            close();
-        }
-        if (!OPTION_NORMALLY_OPEN & OPTION_NORMALLY_CLOSED)
+        else
         {
             doorState = OPEN;
             close();
@@ -520,7 +619,7 @@ default
     }
 
     listen(integer channel, string name, key id, string message) {
-        sayDebug("listen channel:"+(string)channel+" name:'"+name+"' message: '"+message+"'");
+        //sayDebug("listen channel:"+(string)channel+" name:'"+name+"' message: '"+message+"'");
         if ((channel == POWER_CHANNEL) & (gPowerState != POWER_FAILING) & (gPowerState != POWER_OFF))
         {
             sayDebug("listen POWER_CHANNEL gPowerState:"+(string)gPowerState);
@@ -535,6 +634,16 @@ default
             gPowerState = POWER_FAILING;
             sendJSONinteger("powerState", gPowerState, "");
             setColorsAndIcons();
+        }
+        
+        else if (channel == responderChannel)
+        {
+            sayDebug("listen responderChannel message:"+message);
+            // like {"response":[{"Role":"Inmate"},{"Mood":"unknown"},{"Class":"unknown"},{"LockLevel":"unknown"}]}
+            avatarJSON = llJsonGetValue(message, ["response"]);
+            if (checkAuthorization2(avatarJSON)) {
+                toggleDoor();
+            }
         }
         
         else if (channel == LOCKDOWN_CHANNEL)
@@ -591,9 +700,9 @@ default
             OPTION_ADMIN = setOptionLogical(message, "Admin", OPTION_ADMIN, stateNew);
             OPTION_ZAP = setOptionLogical(message, "Zap", OPTION_ZAP, stateNew);
             OPTION_NORMALLY_OPEN = setOptionLogical(message, "Open", OPTION_NORMALLY_OPEN, stateNew);
-            OPTION_NORMALLY_CLOSED = setOptionLogical(message, "Close", OPTION_NORMALLY_CLOSED, stateNew);
             OPTION_BUTTON = setOptionLogical(message, "Button", OPTION_BUTTON, stateNew);
             OPTION_BUMP = setOptionLogical(message, "Bump", OPTION_BUMP, stateNew);
+            OPTION_DIRECTION = setOptionLogical(message, "Direction", OPTION_DIRECTION, stateNew);
             OPTION_DEBUG = setOptionLogical(message, "Debug", OPTION_DEBUG, stateNew);
             
             saveOptions(); // must save options now in case of reset
@@ -645,16 +754,18 @@ default
                 menuListen = 0;
                 gMenuTimer = 0;
             }
-            if (checkAuthorization("button", whoClicked)) {
+            if (checkAuthorization1("button", whoClicked)) {
                 toggleDoor();
             } else {
                 setColorsAndIcons();
+                pokeResponder(whoClicked);
             }
         } else if (command == "bump") {
             if (!OPTION_NORMALLY_OPEN) {
-                if (checkAuthorization("bump", whoClicked)) {
+                if (checkAuthorization1("bump", whoClicked)) {
                     toggleDoor();
                 } else {
+                    pokeResponder(whoClicked);
                     setColorsAndIcons();
                 }
             }
