@@ -33,10 +33,10 @@ integer gMenuTimer = 0;
 
 // Door States
 integer doorState; // 1 = door is open
-integer OPEN = 1;
-integer CLOSED = 0;
-integer QUIETLY = 0;
-integer NOISILY = 1;
+integer OPEN = TRUE;
+integer CLOSED = FALSE;
+integer QUIETLY = FALSE;
+integer NOISILY = TRUE;
 
 // power states
 integer POWER_CHANNEL = -86548766;
@@ -44,8 +44,8 @@ integer gPowerListen;
 integer gPowerState = 0;
 integer gPowerTimer = 0;
 integer POWER_RESET_TIME = 60;
-integer OFF = 0;
-integer ON = 1;
+integer OFF = FALSE;
+integer ON = TRUE;
 integer OVERRIDE = 1;
 integer MAYBE = 0;
 integer POWER_OFF = 0;
@@ -66,18 +66,18 @@ integer LOCKDOWN_TEMP = 3; // for normally-open door closed fair-game release
 string sound_lockdown = "2d9b82b0-84be-d6b2-22af-15d30c92ad21";
 
 // options
-integer OPTION_DEBUG = 0;
-integer OPTION_LOCKDOWN = 0;
-integer OPTION_DELAY = 0;
-integer OPTION_POWER = 0;
-integer OPTION_GROUP = 0;
-integer OPTION_ADMIN = 0;
-integer OPTION_OWNERS = 0;
-integer OPTION_ZAP = 0;
-integer OPTION_NORMALLY_OPEN = 0;
-integer OPTION_LABEL = 0;
-integer OPTION_BUTTON = 0;
-integer OPTION_BUMP = 0;
+integer OPTION_DEBUG = FALSE;
+integer OPTION_LOCKDOWN = FALSE;
+integer OPTION_DELAY = FALSE;
+integer OPTION_POWER = FALSE;
+integer OPTION_GROUP = FALSE;
+integer OPTION_ADMIN = FALSE;
+integer OPTION_OWNERS = FALSE;
+integer OPTION_ZAP = FALSE;
+integer OPTION_NORMALLY_OPEN = FALSE;
+integer OPTION_LABEL = FALSE;
+integer OPTION_BUTTON = FALSE;
+integer OPTION_BUMP = FALSE;
 integer OPTION_DIRECTION = 1; // if 1, sets security based on entry or exit
 string OPTION_COLOR_FRAME = JSON_INVALID;
 string OPTION_COLOR_PANELS = JSON_INVALID;
@@ -234,6 +234,7 @@ string getJSONstring(string jsonValue, string jsonKey, string valueNow){
     if (value != JSON_INVALID) {
         result = value;
     }
+    sayDebug("getJSONstring("+jsonValue+", "+jsonKey+", "+valueNow+")  returns  "+result);
     return result;
 }
     
@@ -329,6 +330,7 @@ integer checkAdmin(key whoclicked)
 
 integer uuidToInteger(key uuid)
 // primitive hash of uuid parts
+// It is used to generate a channel number from an avatar UUID.
 {
     // UUID looks like 284ba63f-378b-4be6-84d9-10db6ae48b8d
     string hexdigits = "abcdef";
@@ -365,15 +367,16 @@ integer uuidToInteger(key uuid)
 pokeResponder(key whoclicked) {
     // send a message on the responderChannel for the avatar
     // the message looks like
-    // {"request":["Mood","Class","LockLevel"]}
+    // {"request":["mood","class","lockLevel"]}
     responderChannel = uuidToInteger(whoclicked);
     responderListen = llListen(responderChannel, "", "", "");
     
     // first make a json list
-    string jsonArray = (llList2Json(JSON_ARRAY, ["Role", "Mood","Class","LockLevel"]));
+    string jsonArray = (llList2Json(JSON_ARRAY, ["role", "mood","class","lockLevel"]));
     string jsonRequest = llList2Json(JSON_OBJECT, ["request", jsonArray]);
     sayDebug("pokeResponder jsonRequest:"+(string)responderChannel + " " + jsonRequest);
     llSay(responderChannel, jsonRequest);
+    // Message from avatar comes back in default listen where channel == responderChannel
 }
 
 integer checkAuthorization1(string calledby, key whoclicked)
@@ -454,38 +457,41 @@ integer checkAuthorization1(string calledby, key whoclicked)
 }
 
 integer checkAuthorization2 (string avatarJSON) {
-    sayDebug("checkAuthorization2 "+avatarJSON);
-    // [{"Role":"Inmate"},{"Mood":"OOC"},{"Class":"blue"},{"LockLevel":"Off"}]
+    sayDebug("checkAuthorization2 ("+avatarJSON+")");
+    // [{"role":"Inmate"},{"mood":"OOC"},{"class":"blue"},{"lockLevel":"Off"}]
     integer authorized = 0;
     if (avatarJSON != JSON_INVALID) {
         string role = "unknown";
         string mood = "unknown";
         string class = "unknown";
-        string locklevel = "unknown";
+        string lockLevel = "unknown";
 
         list keyValuePairs = llJson2List(avatarJSON);
+        //sayDebug("checkAuthorization2 keyValuePairs:"+(string)keyValuePairs);
         integer i;
         list responses;
-        for (i = 0; i < llGetListLength(keyValuePairs); i++) {
-            string keyValue = llList2String(keyValuePairs, i);
-            role = getJSONstring(keyValue, "Role", role);
-            mood = getJSONstring(keyValue, "Mood", mood);
-            class = getJSONstring(keyValue, "Class", class);
-            locklevel = getJSONstring(keyValue, "LockLevel", locklevel);
+        for (i = 0; i < llGetListLength(keyValuePairs); i = i + 2) {
+            string thekey = llList2String(keyValuePairs, i);
+            string value = llList2String(keyValuePairs, i+1);
+            //sayDebug("checkAuthorization2 thekey:"+thekey+"  value:"+value);
+            if (thekey ==  "role") {role = value;}
+            if (thekey ==  "mood") {mood = value;}
+            if (thekey ==  "class") {class = value;}
+            if (thekey ==  "lockLevel") {lockLevel = value;}
         }
-        sayDebug("checkAuthorization2 role:"+role+" Mood:"+mood+" Class:"+class+" Lock:"+locklevel);
-        if (role == "Inmate") {
+        sayDebug("checkAuthorization2 role:"+role+" mood:"+mood+" class:"+class+" Lock:"+lockLevel);
+        if (role == "inmate") {
             if (direction == "Exit") {
                 if (mood == "OOC") {
                     authorized = 1;
                 } else {
-                    llWhisper(0, "Inmate! Exit is forbidden. ((Switch your Mood to OOC.))");
+                    llWhisper(0, "Inmate! Exit is forbidden. ((Switch your mood to OOC.))");
                 }
             } else {
                 if (mood != "OOC") {
                     authorized = 1;
                 } else {
-                    llWhisper(0, "Inmate! Entry is forbidden. ((Switch your Mood to IC.))");
+                    llWhisper(0, "Inmate! Entry is forbidden. ((Switch your mood to IC.))");
                 }
             }
         }
@@ -639,7 +645,7 @@ default
         else if (channel == responderChannel)
         {
             sayDebug("listen responderChannel message:"+message);
-            // like {"response":[{"Role":"Inmate"},{"Mood":"unknown"},{"Class":"unknown"},{"LockLevel":"unknown"}]}
+            // like {"response":[{"role":"Inmate"},{"mood":"unknown"},{"class":"unknown"},{"lockLevel":"unknown"}]}
             avatarJSON = llJsonGetValue(message, ["response"]);
             if (checkAuthorization2(avatarJSON)) {
                 toggleDoor();
